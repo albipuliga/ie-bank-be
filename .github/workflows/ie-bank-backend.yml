@@ -1,9 +1,14 @@
 name: ie-bank-backend
-
 on:
   push:
+    paths:
+      - "**"
+    branches:
+      - "*" # This will run on any branch
   pull_request:
     branches: ["main"]
+    paths:
+      - "**"
   workflow_dispatch:
 
 permissions:
@@ -12,13 +17,13 @@ permissions:
 
 env:
   BACKEND_WEBAPP_DEV: apuliga-be-dev
+  BACKEND_WEBAPP_UAT: apuliga-be-uat # Add this line for UAT webapp name
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       ENV: ghci
-
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python 3.11
@@ -35,26 +40,24 @@ jobs:
         run: |
           pip install flake8 pytest
           # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          flake8 --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
         run: |
-          python -m pytest --cov=iebank_api -v
+          python -m pytest -v
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            .
+          path: .
 
-  deploy:
+  deploy-dev:
     runs-on: ubuntu-latest
     needs: build
     environment:
       name: "Development"
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
@@ -65,10 +68,33 @@ jobs:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: "Deploy to Azure Web App"
         uses: azure/webapps-deploy@v2
         id: deploy-to-webapp
         with:
           app-name: ${{ env.BACKEND_WEBAPP_DEV }}
+          package: .
+
+  deploy-uat:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: "UAT"
+      url: ${{ steps.deploy-to-webapp-uat.outputs.webapp-url }}
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+          path: .
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: "Deploy to Azure Web App (UAT)"
+        uses: azure/webapps-deploy@v2
+        id: deploy-to-webapp-uat
+        with:
+          app-name: ${{ env.BACKEND_WEBAPP_UAT }}
           package: .

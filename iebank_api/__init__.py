@@ -16,7 +16,7 @@ if os.getenv("ENV") == "local":
 elif os.getenv("ENV") == "dev":
     print("Running in development mode")
     app.config.from_object("config.DevelopmentConfig")
-elif os.getenv("ENV") == "uat":
+elif os.getenv("ENV") == "UAT":
     print("Running in uat mode")
     app.config.from_object("config.UatConfig")
 elif os.getenv("ENV") == "ghci":

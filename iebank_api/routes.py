@@ -11,7 +11,7 @@ def hello_world():
 
 @app.route("/skull", methods=["GET"])
 def skull():
-    text = "Hi! This is the BACKEND SKULL! 💀 "
+    text = "Hi! This is the BACKEND SKULL!"
 
     if db.engine.url.database:
         text = text + "<br/>Database URL:" + db.engine.url.database
